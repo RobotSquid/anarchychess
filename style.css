@@ -1,0 +1,81 @@
+*:not(input) {
+    cursor: default;
+    user-select: none;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+#game-div {
+    background-color: #0a0a0a;
+    height: 100%; 
+    display: grid;
+    grid-template-columns: 70% 30%;
+    grid-template-rows: 7% 86% 7%;
+}
+
+#player-deets-b #player-deets-w {
+    width: 100%;
+    height: 100%;
+    background-color: #222222;
+}
+
+#player-deets-b {
+    grid-area: 1 / 1 / span 1 / span 1;
+}
+
+#player-deets-w {
+    grid-area: 3 / 1 / span 1 / span 1;
+}
+
+#chat-window {
+    background-color: #222222;
+    width: 100%;
+    height: 100%;
+    grid-area: 1 / 2 / span 3 / span 1;
+}
+
+#main-board {
+    margin: auto auto;
+    position: relative;
+    width: min(70vw, 86vh);
+    height: min(70vw, 86vh);
+    grid-area: 2 / 1 / span 1 / span 1;
+}
+
+#game-canvas {
+    background-color: #769656;
+    color: #EEEED2;
+    position: relative;
+    border-radius: 5px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); 
+}
+
+#game-overlay {
+    position: relative;
+    top: -50%;
+    left: 50%;
+    transform: translate(-50%, -50%); 
+    color: rgba(0, 0, 0, 0);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.piece {
+    position: absolute;
+    cursor: grab;
+    z-index: 1;
+    background-image: url("pieces2.png");
+    background-size: min(42vw, 51.6vh) min(14vw, 17.2vh);
+    width: min(7vw, 8.6vh);
+    height: min(7vw, 8.6vh);
+    margin: 3px 0px 0px 3px;
+}
+
+.piece:active {
+    cursor: grabbing;
+}
