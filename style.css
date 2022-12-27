@@ -70,7 +70,7 @@ html, body {
     cursor: grab;
     z-index: 1;
     background-image: url("pieces2.png");
-    background-size: min(42vw, 51.6vh) min(14vw, 17.2vh);
+    background-size: min(49vw, 60.2vh) min(21vw, 25.8vh);
     width: min(7vw, 8.6vh);
     height: min(7vw, 8.6vh);
     margin: 3px 0px 0px 3px;
