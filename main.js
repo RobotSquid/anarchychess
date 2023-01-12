@@ -2,7 +2,8 @@
 // ---------
 var canvas = document.getElementById("game-canvas");
 var canvas2 = document.getElementById("game-overlay");
-var board = document.getElementById("main-board");
+var boarde = document.getElementById("main-board");
+var chatw = document.getElementById("chat-window");
 var g = canvas.getContext("2d");
 var o = canvas2.getContext("2d");
 
@@ -10,13 +11,15 @@ var color_1 = window.getComputedStyle(canvas, null).getPropertyValue('color');
 var color_2 = window.getComputedStyle(canvas, null).getPropertyValue('background-color');
 
 var n = 10;
-canvas.width = Math.floor(board.offsetWidth/n)*n;
-canvas.height = Math.floor(board.offsetWidth/n)*n;
-canvas2.width = Math.floor(board.offsetWidth/n)*n;
-canvas2.height = Math.floor(board.offsetWidth/n)*n;
+canvas.width = Math.floor(boarde.offsetWidth/n)*n;
+canvas.height = Math.floor(boarde.offsetWidth/n)*n;
+canvas2.width = Math.floor(boarde.offsetWidth/n)*n;
+canvas2.height = Math.floor(boarde.offsetWidth/n)*n;
 var size = Math.floor(canvas.width/n);
 
 var mx = null, my = null, sx = null, sy = null;
+
+var eps = null;
 
 var pieces = document.getElementById("piece-container");
 var rect = pieces.getBoundingClientRect();
@@ -38,6 +41,10 @@ var turn = 0;
 function boardf(x, y) {
 	if (x < 0 || x >= n || y < 0 || y >= n) return 'X';
 	return board[y][x];
+}
+
+function boardf2(p) {
+	return boardf(p.x, p.y);
 }
 
 function pside(x, y) {
@@ -122,10 +129,11 @@ function p2d(x, y) {
 }
 
 // a customizable move that might involve multiple pieces
-function moveo(dest, take, leave) {
+function moveo(dest, take, leave, typ) {
 	this.dest = dest;
 	this.take = take;
 	this.leave = leave;
+	this.typ = typ;
 }
 
 // a simple move from one position to another
@@ -133,9 +141,11 @@ function move(x, y) {
 	this.dest = new p2d(x, y);
 	this.take = [new p2d(sx, sy)];
 	this.leave = [new p2d(x, y)];
+	this.typ = "m";
 	if (board[y][x] !== '.') {
 		this.take.splice(0, 0, new p2d(x, y));
 		this.leave.splice(0, 0, null);
+		this.typ = "x";
 	}
 }
 
@@ -151,9 +161,9 @@ function update_pieces() {
 				div.className = "piece";
 				var type = offset[ptype(j, i)];
 				var side = pside(j, i);
-				div.style = "background-position: right min("+7*(type+1)+"vw, "+8.6*(type+1)+"vh) bottom min("+7*(side+1)+"vw, "+8.6*(side+1)+"vh);";
-				div.style.top = "" + size*(i) + "px";
-				div.style.left = "" + size*(j) + "px";
+				div.style = "background-position: right "+(type+1)*size+"px bottom "+(side+1)*size+"px;";
+				div.style.top = "" + (size*(i)-2) + "px";
+				div.style.left = "" + (size*(j)-2) + "px";
 				pieces.appendChild(div);
 				drag(div);
 			}
@@ -163,6 +173,16 @@ function update_pieces() {
 
 redraw();
 update_pieces();
+
+window.addEventListener('resize', function(event) {
+	canvas.width = Math.floor(boarde.offsetWidth/n)*n;
+	canvas.height = Math.floor(boarde.offsetWidth/n)*n;
+	canvas2.width = Math.floor(boarde.offsetWidth/n)*n;
+	canvas2.height = Math.floor(boarde.offsetWidth/n)*n;
+	size = Math.floor(canvas.width/n);
+    redraw();
+	update_pieces();
+}, true);
 
 // list of moves of piece at x,y if it is the turn of player turnc
 function possible_moves(x, y, check, turnc) {
@@ -191,6 +211,13 @@ function possible_moves(x, y, check, turnc) {
 		}
 		if (x > 1 && boardf(x-1, y+1*dir) !== '.' && pside(x-1, y+1*dir) !== turnc) {
 			moves.push(new move(x-1, y+1*dir));
+		}
+		//en passant
+		if (x < n-1 && eps !== null && eps.x === x+1 && eps.y === y+1*dir) {
+			moves.push(new moveo(new p2d(x+1, y+1*dir), [new p2d(x+1, y), new p2d(x, y)], [null, new p2d(x+1, y+1*dir)], "ep"));
+		}
+		if (x < n-1 && eps !== null && eps.x === x-1 && eps.y === y+1*dir) {
+			moves.push(new moveo(new p2d(x-1, y+1*dir), [new p2d(x-1, y), new p2d(x, y)], [null, new p2d(x-1, y+1*dir)], "ep"));
 		}
 	}
 	// straight movement
@@ -225,7 +252,7 @@ function possible_moves(x, y, check, turnc) {
 				dx++
 			};
 			if (boardf(x+dx*m1, y+dx*m2) === (turnc ? 'B' : 'b')) 
-				moves.push(new moveo(new p2d(x+dx*m1, y+dx*m2), p2arr, narr));
+				moves.push(new moveo(new p2d(x+dx*m1, y+dx*m2), p2arr, narr, "iv"));
 		}
 	}
 	// horsey and zebra and knook
@@ -249,32 +276,39 @@ function possible_moves(x, y, check, turnc) {
 			var m1 = (dir&1)*(dir&2 ? -1 : 1), m2 = (1-dir&1)*(dir&2 ? -1 : 1);
 			var dx = 1;
 			while (boardf(x+dx*m1, y+dx*m2) === '.') dx++;
-			if (dx >= 2 && boardf(x+dx*m1, y+dx*m2) === (turnc ? 'R' : 'r')) moves.push(new moveo(
+			if (dx >= 2 && (boardf(x+dx*m1, y+dx*m2) === (turnc ? 'R' : 'r') || boardf(x+dx*m1, y+dx*m2) === (turnc ? 'N' : 'n'))) moves.push(new moveo(
 				new p2d(x+2*m1, y+2*m2),
 				[new p2d(x+dx*m1, y+dx*m2), new p2d(x, y)],
-				[new p2d(x+1*m1, y+1*m2), new p2d(x+2*m1, y+2*m2)]
+				[new p2d(x+1*m1, y+1*m2), new p2d(x+2*m1, y+2*m2)], "oo"
 			));
 		}
 	}
+
 	// remove moves that allow the opponent to take king in their turn
-	if (check) moves = moves.filter(function check(m) {
+	return check ? remove_illegal(turnc, moves) : moves;
+}
+
+function remove_illegal(turnc, moves) {
+	return moves.filter(function check(m) {
 		var board2 = JSON.parse(JSON.stringify(board));
+		var preps = eps;
 		move_piece(m);
 		for (var i = 0; i < n; i++) {
 			for (var j = 0; j < n; j++) {
 				if (boardf(i, j) !== '.' && (pside(i, j) !== turnc)) {
 					if (possible_moves(i, j, false, 1-turnc).some((m2) => board[m2.dest.y][m2.dest.x] === (turnc ? 'K' : 'k'))) {
 						board = JSON.parse(JSON.stringify(board2));
+						eps = preps;
 						console.log("INVALID");
 						return false;
 					}
 				}
 			}
 		}
+		eps = preps;
 		board = JSON.parse(JSON.stringify(board2));
 		return true;
 	});
-	return moves;
 }
 
 // move the selected piece and swap turns; return if a valid move was made
@@ -285,7 +319,44 @@ function move_spiece() {
 	if (valid.length === 0) return false;
 	move_piece(valid[0]);
 	turn = 1-turn;
+	add_chat_message(valid[0]);
 	return true;
+}
+
+function add_chat_message(m) {
+	var div = document.createElement("p");
+	if (m.typ == 'm' || m.typ === 'x') {
+		var k = m.take.length-1;
+		div.innerHTML = boardf2(m.leave[k]).toLowerCase() === 'p' ? "" : boardf2(m.leave[k]).toUpperCase(); 
+		if (m.typ === 'x') div.innerHTML += 'x';
+		div.innerHTML += String.fromCharCode(m.leave[k].x+97) + (n-1-m.leave[k].y);
+	} else if (m.typ === 'oo') {
+		var dx = m.leave[1].x-m.take[1].x;
+		var dy = m.leave[1].y-m.take[1].y;
+		if (dy === 0) div.innerHTML = dx < 0 ? "O-O-O" : "O-O";
+		else div.innerHTML = dy < 0 ? "O|O" : "O|O|O";
+	} else if (m.typ === "iv") {
+		div.innerHTML = "B-O-O-B";
+	} else {
+		div.innerHTML = "what the **** ??";
+	}
+	if (checkc()) div.innerHTML += "+";
+	
+	div.className = turn ? "chat-message white" : "chat-message black";
+	chatw.appendChild(div);
+}
+
+function checkc() {
+	for (var i = 0; i < n; i++) {
+		for (var j = 0; j < n; j++) {
+			if (boardf(i, j) !== '.' && (pside(i, j) !== turn)) {
+				if (possible_moves(i, j, false, 1-turn).some((m2) => board[m2.dest.y][m2.dest.x] === (turn ? 'K' : 'k'))) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
 }
 
 // apply a certain move
@@ -293,12 +364,31 @@ function move_piece(m) {
 	for (var i = 0; i < m.take.length; i++) {
 		if (m.leave[i] !== null) board[m.leave[i].y][m.leave[i].x] = board[m.take[i].y][m.take[i].x];
 		board[m.take[i].y][m.take[i].x] = '.';
+		if (m.typ === 'm' && Math.abs(m.take[0].y-m.leave[0].y) === 2) eps = new p2d(m.take[0].x, Math.round((m.take[0].y+m.leave[0].y)/2));
+		else eps = null;
 	}
 }
 
 var down = false;
 
 // mouse drag handlers copied from stackoverflow
+
+canvas.onmousedown = function(e) {
+	if (sx !== null) {
+		mx = Math.floor((e.clientX - rect.left)/size);
+		my = Math.floor((e.clientY - rect.top)/size);
+		if ((mx === sx && my === sy && ps) || move_spiece()) {
+			sx = null;
+			sy = null;
+		}
+		mx = null;
+		my = null;
+		down = false;
+		redraw();
+		update_pieces();
+	}
+}
+
 function drag(el) {
 	el.onmousedown = drag_start;
 	var ps = false;
@@ -312,10 +402,13 @@ function drag(el) {
 		mx = Math.floor((e.clientX - rect.left)/size);
 		my = Math.floor((e.clientY - rect.top)/size);
 		ps = sx !== null;
-		sx = mx;
-		sy = my;
-		drag_move(e);
-		redraw();
+		if (ps) drag_done(e);
+		else {
+			sx = mx;
+			sy = my;
+			drag_move(e);
+			redraw();
+		}
 	}
 
 	function drag_move(e) {

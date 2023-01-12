@@ -79,3 +79,47 @@ html, body {
 .piece:active {
     cursor: grabbing;
 }
+
+.chat-message {
+    padding: 0.5em;
+    margin: 0.5em 1em;
+    clear: both;
+    font-family:'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    border-radius: 0.5em;
+}
+
+.white {
+    background-color: #bbb;
+    color: #333;
+    float: left;
+    border-radius: 0em 0.8em 0.8em 0.8em;
+}
+
+.black {
+    background-color: #333;
+    color: #bbb;
+    float: right;
+    border-radius: 0.8em 0em 0.8em 0.8em;
+}
+
+@media (max-width:961px)  {
+    #game-div {
+        grid-template-columns: 100%;
+        grid-template-rows: 4% 60% 4% 34%;
+    }
+
+    #chat-window {
+        grid-area: 4 / 1 / span 1 / span 1;
+    }
+
+    #main-board {
+        width: min(100vw, 60vh);
+        height: min(100vw, 60vh);
+    }
+
+    .piece {
+        background-size: min(70vw, 42vh) min(30vw, 18vh);
+        width: min(10vw, 6vh);
+        height: min(10vw, 6vh);
+    }
+}
